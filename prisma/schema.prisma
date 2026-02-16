@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Settings {
+  id                     String   @id @default("default")
+  wasenderApiKey         String?
+  defaultIntervalSeconds Int      @default(300)
+  maxMessagesPerDay      Int      @default(288)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  notes     String?
+  isGroup   Boolean  @default(false)
+  tags      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contactListMemberships ContactListMember[]
+  messages               Message[]
+}
+
+model ContactList {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members   ContactListMember[]
+  campaigns Campaign[]
+}
+
+model ContactListMember {
+  id            String      @id @default(uuid())
+  contactId     String
+  contactListId String
+  contact       Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactList   ContactList @relation(fields: [contactListId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, contactListId])
+}
+
+model Campaign {
+  id              String   @id @default(uuid())
+  name            String
+  messageTemplate String
+  contactListId   String
+  contactList     ContactList @relation(fields: [contactListId], references: [id])
+  status          String   @default("DRAFT")
+  startDate       DateTime
+  spreadOverDays  Int      @default(1)
+  intervalSeconds Int      @default(300)
+  totalMessages   Int      @default(0)
+  sentCount       Int      @default(0)
+  failedCount     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  messages Message[]
+}
+
+model Message {
+  id            String   @id @default(uuid())
+  campaignId    String
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId     String
+  contact       Contact  @relation(fields: [contactId], references: [id])
+  text          String
+  status        String   @default("PENDING")
+  scheduledAt   DateTime
+  sentAt        DateTime?
+  errorMessage  String?
+  wasenderMsgId String?
+  retryCount    Int      @default(0)
+  bullJobId     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([campaignId, status])
+}
