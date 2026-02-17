@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,26 +59,31 @@ export default function MessagesPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  const fetchMessages = useCallback(async () => {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: "50",
-    });
-    if (statusFilter !== "ALL") params.set("status", statusFilter);
-
-    const res = await fetch(`/api/messages?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setMessages(data.messages);
-      setTotal(data.total);
-    }
-  }, [page, statusFilter]);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchMessages() {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "50",
+      });
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+
+      const res = await fetch(`/api/messages?${params}`);
+      if (res.ok && !cancelled) {
+        const data = await res.json();
+        setMessages(data.messages);
+        setTotal(data.total);
+      }
+    }
+
     fetchMessages();
     const interval = setInterval(fetchMessages, 15000);
-    return () => clearInterval(interval);
-  }, [fetchMessages]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [page, statusFilter]);
 
   const totalPages = Math.ceil(total / 50);
 

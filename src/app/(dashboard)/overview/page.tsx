@@ -43,31 +43,37 @@ export default function OverviewPage() {
   const [campaigns, setCampaigns] = useState<ActiveCampaign[]>([]);
   const [messages, setMessages] = useState<RecentMessage[]>([]);
 
-  const fetchData = async () => {
-    try {
-      const [statsRes, campaignsRes, messagesRes] = await Promise.all([
-        fetch("/api/stats"),
-        fetch("/api/campaigns?status=RUNNING,SCHEDULED"),
-        fetch("/api/messages?limit=10"),
-      ]);
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (campaignsRes.ok) {
-        const data = await campaignsRes.json();
-        setCampaigns(data.campaigns || []);
-      }
-      if (messagesRes.ok) {
-        const data = await messagesRes.json();
-        setMessages(data.messages || []);
-      }
-    } catch {
-      /* ignore */
-    }
-  };
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchData() {
+      try {
+        const [statsRes, campaignsRes, messagesRes] = await Promise.all([
+          fetch("/api/stats"),
+          fetch("/api/campaigns?status=RUNNING,SCHEDULED"),
+          fetch("/api/messages?limit=10"),
+        ]);
+        if (cancelled) return;
+        if (statsRes.ok) setStats(await statsRes.json());
+        if (campaignsRes.ok) {
+          const data = await campaignsRes.json();
+          setCampaigns(data.campaigns || []);
+        }
+        if (messagesRes.ok) {
+          const data = await messagesRes.json();
+          setMessages(data.messages || []);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     fetchData();
     const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const statCards = [

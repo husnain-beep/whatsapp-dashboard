@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ interface Campaign {
   failedCount: number;
   startDate: string;
   spreadOverDays: number;
-  contactList: { name: string };
+  contactList: { name: string } | null;
 }
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -36,24 +36,31 @@ export default function CampaignsPage() {
   const tc = useTranslations("common");
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
-  const fetchCampaigns = useCallback(async () => {
-    const res = await fetch("/api/campaigns");
-    if (res.ok) {
-      const data = await res.json();
-      setCampaigns(data.campaigns);
-    }
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchCampaigns() {
+      const res = await fetch("/api/campaigns");
+      if (res.ok && !cancelled) {
+        const data = await res.json();
+        setCampaigns(data.campaigns);
+      }
+    }
+
     fetchCampaigns();
-  }, [fetchCampaigns]);
+    return () => { cancelled = true; };
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm(tc("confirm") + "?")) return;
     const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success(tc("success"));
-      fetchCampaigns();
+      const updated = await fetch("/api/campaigns");
+      if (updated.ok) {
+        const data = await updated.json();
+        setCampaigns(data.campaigns);
+      }
     }
   };
 
@@ -94,7 +101,7 @@ export default function CampaignsPage() {
                       </Link>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {campaign.contactList.name} &middot;{" "}
+                      {campaign.contactList?.name ? `${campaign.contactList.name} · ` : ""}
                       {new Date(campaign.startDate).toLocaleDateString()}
                     </p>
                   </div>

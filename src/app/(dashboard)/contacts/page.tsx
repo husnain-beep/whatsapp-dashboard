@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,23 +54,28 @@ export default function ContactsPage() {
     tags: "",
   });
 
-  const fetchContacts = useCallback(async () => {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: "50",
-      ...(search && { search }),
-    });
-    const res = await fetch(`/api/contacts?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setContacts(data.contacts);
-      setTotal(data.total);
-    }
-  }, [page, search]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchContacts() {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "50",
+        ...(search && { search }),
+      });
+      const res = await fetch(`/api/contacts?${params}`);
+      if (res.ok && !cancelled) {
+        const data = await res.json();
+        setContacts(data.contacts);
+        setTotal(data.total);
+      }
+    }
+
     fetchContacts();
-  }, [fetchContacts]);
+    return () => { cancelled = true; };
+  }, [page, search, refreshKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +95,7 @@ export default function ContactsPage() {
       setDialogOpen(false);
       setEditingContact(null);
       setForm({ name: "", phone: "", notes: "", tags: "" });
-      fetchContacts();
+      setRefreshKey((k) => k + 1);
     } else {
       const data = await res.json();
       toast.error(data.error || tc("error"));
@@ -102,7 +107,7 @@ export default function ContactsPage() {
     const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success(tc("success"));
-      fetchContacts();
+      setRefreshKey((k) => k + 1);
     }
   };
 
@@ -132,7 +137,7 @@ export default function ContactsPage() {
         toast.warning(`${data.skipped} duplicates skipped`);
       }
       setImportDialogOpen(false);
-      fetchContacts();
+      setRefreshKey((k) => k + 1);
     } else {
       toast.error(data.error || t("importError"));
     }

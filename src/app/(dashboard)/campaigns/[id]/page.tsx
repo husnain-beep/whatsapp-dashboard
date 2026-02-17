@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ interface Campaign {
   startDate: string;
   spreadOverDays: number;
   intervalSeconds: number;
-  contactList: { name: string };
+  contactList: { name: string } | null;
   messages: Message[];
 }
 
@@ -62,16 +62,21 @@ export default function CampaignDetailPage() {
   const id = params.id as string;
   const [campaign, setCampaign] = useState<Campaign | null>(null);
 
-  const fetchCampaign = useCallback(async () => {
-    const res = await fetch(`/api/campaigns/${id}`);
-    if (res.ok) setCampaign(await res.json());
-  }, [id]);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchCampaign() {
+      const res = await fetch(`/api/campaigns/${id}`);
+      if (res.ok && !cancelled) setCampaign(await res.json());
+    }
+
     fetchCampaign();
     const interval = setInterval(fetchCampaign, 10000);
-    return () => clearInterval(interval);
-  }, [fetchCampaign]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [id]);
 
   const handleAction = async (action: "start" | "pause" | "cancel") => {
     if (action === "cancel" && !confirm(t("cancelConfirm"))) return;
@@ -82,7 +87,8 @@ export default function CampaignDetailPage() {
 
     if (res.ok) {
       toast.success(tc("success"));
-      fetchCampaign();
+      const updated = await fetch(`/api/campaigns/${id}`);
+      if (updated.ok) setCampaign(await updated.json());
     } else {
       const data = await res.json();
       toast.error(data.error || tc("error"));
@@ -110,7 +116,7 @@ export default function CampaignDetailPage() {
         <div className="flex-1">
           <h2 className="text-2xl font-bold">{campaign.name}</h2>
           <p className="text-muted-foreground">
-            {campaign.contactList.name} &middot;{" "}
+             {campaign.contactList?.name ? `${campaign.contactList.name} · ` : ""}
             {new Date(campaign.startDate).toLocaleString()}
           </p>
         </div>

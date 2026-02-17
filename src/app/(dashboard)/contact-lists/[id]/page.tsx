@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,23 +51,27 @@ export default function ContactListDetailPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchList = useCallback(async () => {
-    const res = await fetch(`/api/contact-lists/${id}`);
-    if (res.ok) setList(await res.json());
-  }, [id]);
+  useEffect(() => {
+    let cancelled = false;
 
-  const fetchContacts = useCallback(async () => {
+    async function fetchList() {
+      const res = await fetch(`/api/contact-lists/${id}`);
+      if (res.ok && !cancelled) setList(await res.json());
+    }
+
+    fetchList();
+    return () => { cancelled = true; };
+  }, [id, refreshKey]);
+
+  const fetchContacts = async () => {
     const res = await fetch("/api/contacts?limit=1000");
     if (res.ok) {
       const data = await res.json();
       setAllContacts(data.contacts);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+  };
 
   const memberIds = new Set(list?.members.map((m) => m.contact.id) || []);
 
@@ -89,7 +93,7 @@ export default function ContactListDetailPage() {
       toast.success(tc("success"));
       setAddDialogOpen(false);
       setSelected(new Set());
-      fetchList();
+      setRefreshKey((k) => k + 1);
     }
   };
 
@@ -101,7 +105,7 @@ export default function ContactListDetailPage() {
     });
     if (res.ok) {
       toast.success(tc("success"));
-      fetchList();
+      setRefreshKey((k) => k + 1);
     }
   };
 

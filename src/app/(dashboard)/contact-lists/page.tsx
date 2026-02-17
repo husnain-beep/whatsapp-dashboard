@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,18 +32,22 @@ export default function ContactListsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<ContactList | null>(null);
   const [form, setForm] = useState({ name: "", description: "" });
-
-  const fetchLists = useCallback(async () => {
-    const res = await fetch("/api/contact-lists");
-    if (res.ok) {
-      const data = await res.json();
-      setLists(data.lists);
-    }
-  }, []);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchLists() {
+      const res = await fetch("/api/contact-lists");
+      if (res.ok && !cancelled) {
+        const data = await res.json();
+        setLists(data.lists);
+      }
+    }
+
     fetchLists();
-  }, [fetchLists]);
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +67,7 @@ export default function ContactListsPage() {
       setDialogOpen(false);
       setEditingList(null);
       setForm({ name: "", description: "" });
-      fetchLists();
+      setRefreshKey((k) => k + 1);
     } else {
       toast.error(tc("error"));
     }
@@ -74,7 +78,7 @@ export default function ContactListsPage() {
     const res = await fetch(`/api/contact-lists/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success(tc("success"));
-      fetchLists();
+      setRefreshKey((k) => k + 1);
     }
   };
 
