@@ -42,7 +42,11 @@ export default function NewCampaignPage() {
     name: "",
     contactListId: "",
     messageTemplate: "",
-    startDate: new Date().toISOString().slice(0, 16),
+    startDate: (() => {
+      const now = new Date();
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000 + 5 * 60000); // Add 5 minutes
+      return local.toISOString().slice(0, 16);
+    })(),
     spreadOverDays: 1,
     intervalSeconds: 300,
   });
