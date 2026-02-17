@@ -8,6 +8,8 @@ const redisUrl = new URL(process.env.REDIS_URL || "redis://localhost:6379");
 const connection = {
   host: redisUrl.hostname,
   port: parseInt(redisUrl.port || "6379"),
+  password: redisUrl.password || undefined,
+  username: redisUrl.username || undefined,
   maxRetriesPerRequest: null as null,
 };
 
