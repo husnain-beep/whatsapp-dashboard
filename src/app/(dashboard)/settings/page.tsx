@@ -7,8 +7,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+
+const TIMEZONES = [
+  "Asia/Riyadh",
+  "Asia/Dubai",
+  "Asia/Kuwait",
+  "Asia/Baghdad",
+  "Asia/Beirut",
+  "Asia/Amman",
+  "Asia/Damascus",
+  "Africa/Cairo",
+  "Africa/Casablanca",
+  "Africa/Algiers",
+  "Africa/Tunis",
+  "Africa/Tripoli",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Istanbul",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Asia/Karachi",
+  "Asia/Kolkata",
+  "Asia/Dhaka",
+  "Asia/Jakarta",
+  "Asia/Shanghai",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "Pacific/Auckland",
+];
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
@@ -18,9 +50,37 @@ export default function SettingsPage() {
     wasenderApiKey: "",
     defaultIntervalSeconds: 300,
     maxMessagesPerDay: 288,
+    activeStartTime: "08:00",
+    activeEndTime: "22:00",
+    timezone: "Asia/Riyadh",
   });
   const [maskedKey, setMaskedKey] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{
+    connected: boolean;
+    status: string;
+    message?: string;
+    session?: Record<string, unknown>;
+    user?: Record<string, unknown>;
+  } | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  const fetchConnectionStatus = async () => {
+    setCheckingStatus(true);
+    try {
+      const res = await fetch("/api/settings/connection-status");
+      const data = await res.json();
+      setConnectionStatus(data);
+    } catch {
+      setConnectionStatus({
+        connected: false,
+        status: "error",
+        message: "Failed to check",
+      });
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/settings")
@@ -31,7 +91,13 @@ export default function SettingsPage() {
           wasenderApiKey: "",
           defaultIntervalSeconds: data.defaultIntervalSeconds || 300,
           maxMessagesPerDay: data.maxMessagesPerDay || 288,
+          activeStartTime: data.activeStartTime || "08:00",
+          activeEndTime: data.activeEndTime || "22:00",
+          timezone: data.timezone || "Asia/Riyadh",
         });
+        if (data.wasenderApiKey) {
+          fetchConnectionStatus();
+        }
       });
   }, []);
 
@@ -39,6 +105,9 @@ export default function SettingsPage() {
     const payload: Record<string, unknown> = {
       defaultIntervalSeconds: form.defaultIntervalSeconds,
       maxMessagesPerDay: form.maxMessagesPerDay,
+      activeStartTime: form.activeStartTime,
+      activeEndTime: form.activeEndTime,
+      timezone: form.timezone,
     };
     if (form.wasenderApiKey.trim()) {
       payload.wasenderApiKey = form.wasenderApiKey;
@@ -87,7 +156,84 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold">{t("title")}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">{t("title")}</h2>
+        <Button onClick={handleSave}>{tc("save")}</Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>{t("connectionStatus")}</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchConnectionStatus}
+              disabled={checkingStatus || !maskedKey}
+            >
+              <RefreshCw
+                className={`h-4 w-4 me-1 ${checkingStatus ? "animate-spin" : ""}`}
+              />
+              {t("refreshStatus")}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!maskedKey && !connectionStatus ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-5 w-5" />
+              <span>{t("statusNoKey")}</span>
+            </div>
+          ) : checkingStatus && !connectionStatus ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>{t("statusChecking")}</span>
+            </div>
+          ) : connectionStatus?.connected ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <Badge variant="outline" className="border-green-600 text-green-600">
+                  {t("statusConnected")}
+                </Badge>
+              </div>
+              {connectionStatus.user && (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {"name" in connectionStatus.user && connectionStatus.user.name != null && (
+                    <>
+                      <span className="text-muted-foreground">{t("whatsappUser")}</span>
+                      <span dir="ltr">{String(connectionStatus.user.name)}</span>
+                    </>
+                  )}
+                  {"phone" in connectionStatus.user && connectionStatus.user.phone != null && (
+                    <>
+                      <span className="text-muted-foreground">{t("phoneNumber")}</span>
+                      <span dir="ltr">{String(connectionStatus.user.phone)}</span>
+                    </>
+                  )}
+                </div>
+              )}
+              {connectionStatus.session && "status" in connectionStatus.session && connectionStatus.session.status != null && (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">{tc("status")}</span>
+                  <span>{String(connectionStatus.session.status)}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-red-500" />
+              <span className="text-red-500">
+                {connectionStatus?.status === "invalid_key"
+                  ? t("statusInvalidKey")
+                  : connectionStatus?.status === "no_key"
+                    ? t("statusNoKey")
+                    : connectionStatus?.message || t("statusDisconnected")}
+              </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -181,6 +327,65 @@ export default function SettingsPage() {
               className="w-32"
               dir="ltr"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("activeHours")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t("activeHoursHelp")}
+          </p>
+
+          <div className="flex items-center gap-4">
+            <div className="space-y-1">
+              <Label>{t("startTime")}</Label>
+              <Input
+                type="time"
+                value={form.activeStartTime}
+                onChange={(e) =>
+                  setForm({ ...form, activeStartTime: e.target.value })
+                }
+                className="w-36"
+                dir="ltr"
+              />
+            </div>
+            <span className="mt-6">—</span>
+            <div className="space-y-1">
+              <Label>{t("endTime")}</Label>
+              <Input
+                type="time"
+                value={form.activeEndTime}
+                onChange={(e) =>
+                  setForm({ ...form, activeEndTime: e.target.value })
+                }
+                className="w-36"
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label>{t("timezone")}</Label>
+            <select
+              value={form.timezone}
+              onChange={(e) =>
+                setForm({ ...form, timezone: e.target.value })
+              }
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              dir="ltr"
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
           </div>
         </CardContent>
       </Card>

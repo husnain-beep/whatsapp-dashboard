@@ -48,6 +48,12 @@ export async function PUT(request: NextRequest) {
       updateData.defaultIntervalSeconds = data.defaultIntervalSeconds;
     if (data.maxMessagesPerDay !== undefined)
       updateData.maxMessagesPerDay = data.maxMessagesPerDay;
+    if (data.activeStartTime !== undefined)
+      updateData.activeStartTime = data.activeStartTime;
+    if (data.activeEndTime !== undefined)
+      updateData.activeEndTime = data.activeEndTime;
+    if (data.timezone !== undefined)
+      updateData.timezone = data.timezone;
 
     const settings = await prisma.settings.update({
       where: { id: "default" },

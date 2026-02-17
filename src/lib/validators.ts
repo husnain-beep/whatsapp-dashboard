@@ -26,6 +26,9 @@ export const settingsSchema = z.object({
   wasenderApiKey: z.string().min(1).optional(),
   defaultIntervalSeconds: z.number().int().min(60).max(86400).optional(),
   maxMessagesPerDay: z.number().int().min(1).max(1000).optional(),
+  activeStartTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format").optional(),
+  activeEndTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format").optional(),
+  timezone: z.string().min(1).optional(),
 });
 
 export const contactListSchema = z.object({

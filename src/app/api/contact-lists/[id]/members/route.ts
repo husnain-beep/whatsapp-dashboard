@@ -20,7 +20,10 @@ export async function POST(
     for (const contactId of contactIds as string[]) {
       try {
         await prisma.contactListMember.create({
-          data: { contactListId: id, contactId },
+          data: {
+            contactList: { connect: { id } },
+            contact: { connect: { id: contactId } },
+          },
         });
         added++;
       } catch {

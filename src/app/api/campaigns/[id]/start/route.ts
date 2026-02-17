@@ -37,6 +37,13 @@ export async function POST(
       );
     }
 
+    if (!campaign.contactList) {
+      return NextResponse.json(
+        { error: "Campaign has no contact list" },
+        { status: 400 }
+      );
+    }
+
     const contacts: { id: string; name: string; phone: string }[] = campaign.contactList.members.map((m: { contact: { id: string; name: string; phone: string } }) => ({
       id: m.contact.id,
       name: m.contact.name,
@@ -68,27 +75,29 @@ export async function POST(
     );
 
     // Create all messages
-    const messageData = schedule.map((item) => {
+    let messageCount = 0;
+    for (const item of schedule) {
       const contact = contacts.find((c) => c.id === item.contactId)!;
       const text = resolveTemplate(campaign.messageTemplate, {
         name: contact.name,
       });
-      return {
-        campaignId: id,
-        contactId: item.contactId,
-        text,
-        scheduledAt: item.scheduledAt,
-        status: "PENDING",
-      };
-    });
-
-    await prisma.message.createMany({ data: messageData });
+      await prisma.message.create({
+        data: {
+          campaign: { connect: { id } },
+          contact: { connect: { id: item.contactId } },
+          text,
+          scheduledAt: item.scheduledAt,
+          status: "PENDING",
+        },
+      });
+      messageCount++;
+    }
 
     await prisma.campaign.update({
       where: { id },
       data: {
         status: "SCHEDULED",
-        totalMessages: messageData.length,
+        totalMessages: messageCount,
         sentCount: 0,
         failedCount: 0,
       },
@@ -97,7 +106,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       status: "SCHEDULED",
-      totalMessages: messageData.length,
+      totalMessages: messageCount,
     });
   } catch (error) {
     console.error("Start campaign error:", error);

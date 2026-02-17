@@ -17,9 +17,59 @@ const adapter = new PrismaBetterSqlite3({
 const prisma = new PrismaClient({ adapter });
 const messageQueue = new Queue("message-queue", { connection });
 
+// --- Active Hours Check ---
+function isWithinActiveHours(
+  startTime: string,
+  endTime: string,
+  timezone: string
+): boolean {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const hour = parseInt(
+    parts.find((p) => p.type === "hour")?.value || "0",
+    10
+  );
+  const minute = parseInt(
+    parts.find((p) => p.type === "minute")?.value || "0",
+    10
+  );
+  const currentMinutes = hour * 60 + minute;
+
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  if (startMinutes <= endMinutes) {
+    // Normal range (e.g., 08:00 - 22:00)
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  } else {
+    // Overnight range (e.g., 22:00 - 06:00)
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  }
+}
+
 // --- Cron Poller: Find due messages and add to BullMQ ---
 cron.schedule("* * * * *", async () => {
   try {
+    // Check active hours before processing
+    const settings = await prisma.settings.findUnique({
+      where: { id: "default" },
+    });
+    const startTime = settings?.activeStartTime || "08:00";
+    const endTime = settings?.activeEndTime || "22:00";
+    const timezone = settings?.timezone || "Asia/Riyadh";
+
+    if (!isWithinActiveHours(startTime, endTime, timezone)) {
+      return; // Outside active hours, skip
+    }
+
     const pendingMessages = await prisma.message.findMany({
       where: {
         status: "PENDING",

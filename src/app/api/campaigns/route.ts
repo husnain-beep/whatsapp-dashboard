@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: data.name,
         messageTemplate: data.messageTemplate,
-        contactListId: data.contactListId,
+        contactList: { connect: { id: data.contactListId } },
         startDate: new Date(data.startDate),
         spreadOverDays: data.spreadOverDays,
         intervalSeconds: data.intervalSeconds,

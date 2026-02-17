@@ -12,6 +12,9 @@ model Settings {
   wasenderApiKey         String?
   defaultIntervalSeconds Int      @default(300)
   maxMessagesPerDay      Int      @default(288)
+  activeStartTime        String   @default("08:00")
+  activeEndTime          String   @default("22:00")
+  timezone               String   @default("Asia/Riyadh")
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }
@@ -55,8 +58,8 @@ model Campaign {
   id              String   @id @default(uuid())
   name            String
   messageTemplate String
-  contactListId   String
-  contactList     ContactList @relation(fields: [contactListId], references: [id])
+  contactListId   String?
+  contactList     ContactList? @relation(fields: [contactListId], references: [id])
   status          String   @default("DRAFT")
   startDate       DateTime
   spreadOverDays  Int      @default(1)
