@@ -157,6 +157,16 @@
     "sendSuccess": "{count} messages scheduled for sending",
     "sendFailed": "Failed to schedule messages"
   },
+  "auth": {
+    "title": "Welcome Back",
+    "description": "Enter the dashboard password to continue",
+    "password": "Password",
+    "passwordPlaceholder": "Enter password",
+    "login": "Sign In",
+    "logout": "Sign Out",
+    "invalidPassword": "Invalid password",
+    "loginError": "An error occurred. Please try again."
+  },
   "settings": {
     "title": "Settings",
     "apiKey": "WaSender API Key",

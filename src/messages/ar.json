@@ -157,6 +157,16 @@
     "sendSuccess": "تم جدولة {count} رسالة للإرسال",
     "sendFailed": "فشل في جدولة الرسائل"
   },
+  "auth": {
+    "title": "مرحباً بعودتك",
+    "description": "أدخل كلمة مرور لوحة التحكم للمتابعة",
+    "password": "كلمة المرور",
+    "passwordPlaceholder": "أدخل كلمة المرور",
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "invalidPassword": "كلمة المرور غير صحيحة",
+    "loginError": "حدث خطأ. يرجى المحاولة مرة أخرى."
+  },
   "settings": {
     "title": "الإعدادات",
     "apiKey": "مفتاح API واسندر",

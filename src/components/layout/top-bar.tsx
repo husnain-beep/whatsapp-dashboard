@@ -1,6 +1,7 @@
 import { getLocale } from "next-intl/server";
 import { LanguageSwitcher } from "./language-switcher";
 import { MobileSidebar } from "./mobile-sidebar";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export async function TopBar() {
   const locale = await getLocale();
@@ -10,6 +11,7 @@ export async function TopBar() {
       <MobileSidebar />
       <div className="flex-1" />
       <LanguageSwitcher currentLocale={locale} />
+      <LogoutButton />
     </header>
   );
 }
